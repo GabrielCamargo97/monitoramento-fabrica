@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel da Fábrica</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-black text-gray-200 min-h-screen p-6">
+
+  <header class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold tracking-wide">🏭 Painel de Monitoramento</h1>
+    <span id="conexao" class="text-sm px-3 py-1 rounded-full bg-gray-800">conectando...</span>
+  </header>
+
+  <section id="cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></section>
+
+  <section class="bg-gray-900 rounded-xl p-4">
+    <h2 class="mb-2 font-semibold">Temperatura (°C)</h2>
+    <div class="h-80"><canvas id="grafico"></canvas></div>
+  </section>
+
+<script>
+  const LIMITE = 80;
+  const MAX_PONTOS = 30;
+  const cores = ['#22c55e', '#38bdf8', '#f59e0b', '#c084fc'];
+  const maquinas = {};
+
+  const cards = document.getElementById('cards');
+  const grafico = new Chart(document.getElementById('grafico'), {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      animation: false,
+      maintainAspectRatio: false,
+      scales: {
+        y: { min: 30, max: 100, grid: { color: '#222' } },
+        x: { grid: { color: '#222' } }
+      },
+      plugins: { legend: { labels: { color: '#ccc' } } }
+    }
+  });
+
+  function criarMaquina(nome) {
+    const indice = Object.keys(maquinas).length;
+    const card = document.createElement('div');
+    card.className = 'rounded-xl p-4 border-2 transition-colors';
+    cards.appendChild(card);
+
+    grafico.data.datasets.push({
+      label: nome, data: [], borderColor: cores[indice % cores.length],
+      tension: 0.3, pointRadius: 0
+    });
+    maquinas[nome] = { temps: [], card, indice };
+  }
+
+  function atualizar(l) {
+    if (!maquinas[l.maquina]) criarMaquina(l.maquina);
+    const m = maquinas[l.maquina];
+    const alerta = l.temperatura > LIMITE;
+
+    m.card.className = 'rounded-xl p-4 border-2 transition-colors ' +
+      (alerta ? 'border-red-500 bg-red-950' : 'border-green-500 bg-gray-900');
+    m.card.innerHTML = `
+      <div class="flex justify-between items-center">
+        <span class="font-semibold">${l.maquina}</span>
+        <span class="text-xs ${alerta ? 'text-red-400' : 'text-green-400'}">
+          ${alerta ? '⚠ SUPERAQUECIMENTO' : '● NORMAL'}</span>
+      </div>
+      <div class="text-4xl font-bold my-2">${l.temperatura.toFixed(1)}°C</div>
+      <div class="text-sm text-gray-400">Peças: ${l.pecas}</div>`;
+
+    m.temps.push(l.temperatura);
+    if (m.temps.length > MAX_PONTOS) m.temps.shift();
+    grafico.data.datasets[m.indice].data = [...m.temps];
+
+    if (m.indice === 0) {
+      grafico.data.labels.push(new Date(l.timestamp).toLocaleTimeString());
+      if (grafico.data.labels.length > MAX_PONTOS) grafico.data.labels.shift();
+    }
+    grafico.update();
+  }
+
+  const status = document.getElementById('conexao');
+  let ultimoId = 0;
+
+  async function buscar() {
+    try {
+      const resp = await fetch('/api/leituras');
+      const dados = await resp.json();
+      dados
+        .filter(l => l.id > ultimoId)
+        .sort((a, b) => a.id - b.id)
+        .forEach(l => { atualizar(l); ultimoId = l.id; });
+      status.textContent = '● ao vivo';
+      status.className = 'text-sm px-3 py-1 rounded-full bg-green-900 text-green-300';
+    } catch (e) {
+      status.textContent = 'desconectado';
+      status.className = 'text-sm px-3 py-1 rounded-full bg-red-900 text-red-300';
+    }
+  }
+
+  buscar();
+  setInterval(buscar, 2000);
+</script>
+</body>
+</html>
