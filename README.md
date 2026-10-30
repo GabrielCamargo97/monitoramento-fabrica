@@ -35,7 +35,7 @@ Painel (HTML + Tailwind + Chart.js) ──► GET /api/leituras (a cada 2 s)
 |---|---|
 | Linguagem | Java 21 |
 | Framework | Spring Boot 4.1 (Web, Data JPA, Validation) |
-| Banco de dados | H2 (em memória) |
+| Banco de dados | H2 (padrão, em memória) ou PostgreSQL 16 via Docker |
 | Front-end | HTML, Tailwind CSS (CDN), Chart.js (CDN), JavaScript |
 | Alertas | Telegram Bot API |
 | Build | Maven |
@@ -112,30 +112,38 @@ Exemplo de corpo para o `POST`:
 ## 📁 Estrutura
 
 ```
-src/main/java/com/fabrica/monitoramento
-├── MonitoramentoApplication.java   # ponto de entrada
-├── Leitura.java                    # entidade JPA
-├── LeituraRequest.java             # DTO com validação
-├── LeituraRepository.java          # acesso ao banco
-├── LeituraController.java          # rotas REST
-├── LeituraStream.java              # distribuição via SSE
-├── StreamController.java           # rota /api/stream
-├── SimuladorSensores.java          # gerador de leituras
-├── AlertaService.java              # regra de limite e cooldown
-├── Notificador.java                # interface de notificação
-└── TelegramNotificador.java        # implementação para Telegram
-
-src/main/resources/static/index.html   # painel
+monitoramento
+├── docker-compose.yml                 # sobe o PostgreSQL via Docker
+├── pom.xml
+└── src/main
+    ├── java/com/fabrica/monitoramento
+    │   ├── MonitoramentoApplication.java   # ponto de entrada
+    │   ├── Leitura.java                    # entidade JPA
+    │   ├── LeituraRequest.java             # DTO com validação
+    │   ├── LeituraRepository.java          # acesso ao banco
+    │   ├── LeituraController.java          # rotas REST
+    │   ├── LeituraStream.java              # distribuição via SSE
+    │   ├── StreamController.java           # rota /api/stream
+    │   ├── SimuladorSensores.java          # gerador de leituras
+    │   ├── AlertaService.java              # regra de limite e cooldown
+    │   ├── LimpezaService.java             # remove leituras antigas
+    │   ├── Notificador.java                # interface de notificação
+    │   └── TelegramNotificador.java        # implementação para Telegram
+    └── resources
+        ├── application.properties          # configuração padrão (H2)
+        ├── application-postgres.properties # perfil com PostgreSQL
+        └── static/index.html               # painel
 ```
 
 ## 🗺️ Próximos passos
 
-- [ ] Persistência com **PostgreSQL via Docker Compose**
-- [ ] Limpeza automática de leituras antigas
+- [x] Persistência com **PostgreSQL via Docker Compose**
+- [x] Limpeza automática de leituras antigas
 - [ ] Atualização do painel via SSE/WebSocket, em vez de consulta periódica
 - [ ] Notificador para WhatsApp (Twilio ou Cloud API)
 - [ ] Histórico por máquina e filtros no painel
 - [ ] Testes automatizados
+
 
 ## 📄 Licença
 
